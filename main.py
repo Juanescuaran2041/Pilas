@@ -1,7 +1,5 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-import random
-
 class DPIStackInspector():
     def __init__(self):
         self.items = []
@@ -134,8 +132,6 @@ class DPIAppSimulator():
         self.txt_log.config(state="disabled")
  
         self.lbl_stream.config(text=" -> ".join(self.current_packet))
-        origen = "Generado dinámicamente" if generado else "Escenario predefinido"
-        self.log(f"[*] {origen}: {nombre}")
         self.log(f"[*] Umbral máximo de profundidad = {self.max_depth}\n")
  
     def update_stack_ui(self):
