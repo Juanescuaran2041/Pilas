@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import random
 
 class DPIStackInspector():
     def __init__(self):
@@ -21,12 +22,6 @@ class DPIStackInspector():
 
     def to_list (self):
         return list(self.items)
-
-
-def generar_paquete():
-
-    pass
-    
 
 #---Aplicacion---#
 class DPIAppSimulator():
@@ -87,9 +82,6 @@ class DPIAppSimulator():
         self.btn_reset = ttk.Button(frame_controls, text="Reiniciar Escenario", command=self.load_scenario)
         self.btn_reset.pack(side="left", padx=5)
  
-        self.btn_random = ttk.Button(frame_controls, text="🎲 Generar Escenario Aleatorio", command=self.load_random_scenario)
-        self.btn_random.pack(side="left", padx=5)
- 
         frame_main = ttk.Frame(self.root, padding=10)
         frame_main.pack(fill="both", expand=True, padx=10)
  
@@ -118,9 +110,93 @@ class DPIAppSimulator():
  
         self.load_scenario()
 
-    #logic
+    #---logic---#
     def log(self, message):
-        self.txt_log.config("")
+            self.txt_log.config(state="normal")
+            self.txt_log.insert("end", message + "\n")
+            self.txt_log.see("end")
+            self.txt_log.config(state="disabled")
+ 
+    def load_scenario(self, event=None):
+        nombre = self.combo_scenario.get()
+        tokens = self.escenarios[nombre]
+        self._iniciar_escenario(nombre, tokens)
+ 
+    def _iniciar_escenario(self, nombre, tokens, generado=False):
+        self.current_packet = tokens
+        self.stack = DPIStackInspector()
+        self.token_index = 0
+        self.btn_step.config(state="normal")
+ 
+        self.list_stack.delete(0, tk.END)
+        self.txt_log.config(state="normal")
+        self.txt_log.delete("1.0", tk.END)
+        self.txt_log.config(state="disabled")
+ 
+        self.lbl_stream.config(text=" -> ".join(self.current_packet))
+        origen = "Generado dinámicamente" if generado else "Escenario predefinido"
+        self.log(f"[*] {origen}: {nombre}")
+        self.log(f"[*] Umbral máximo de profundidad = {self.max_depth}\n")
+ 
+    def update_stack_ui(self):
+        self.list_stack.delete(0, tk.END)
+        for item in reversed(self.stack.to_list()):
+            self.list_stack.insert(tk.END, f"  [ CAPA: {item} ]")
+ 
+    def process_step(self):
+        if self.token_index >= len(self.current_packet):
+            if self.stack.isEmpty():
+                self.log("\n✅ FIN DE INSPECCIÓN: Paquete válido y seguro (pila vacía).")
+                messagebox.showinfo("Resultado", "Paquete verificado exitosamente.\nTodas las capas se cerraron en orden LIFO correcto.")
+            else:
+                self.log(f"\n🚨 ALERTA: Paquete finalizado con capas abiertas: {self.stack.to_list()}")
+                messagebox.showerror("Ataque Detectado", "Paquete truncado (capas incompletas).")
+            self.btn_step.config(state="disabled")
+            return
+ 
+        token = self.current_packet[self.token_index]
+        self.token_index += 1
+        action, proto = token.split("_", 1)
+ 
+        if action == "OPEN":
+            self.stack.push(proto)
+            profundidad = len(self.stack.to_list())
+            self.log(f"[PUSH] -> Abriendo capa: {proto} | Profundidad: {profundidad}")
+            self.update_stack_ui()
+ 
+            if profundidad > self.max_depth:
+                self.log(f"\n🚨 ALERTA: Profundidad {profundidad} excede el umbral ({self.max_depth}).")
+                self.log("Diagnóstico: posible túnel de evasión (protocolo dentro de protocolo).")
+                self.log("Acción: CONEXIÓN BLOQUEADA.")
+                messagebox.showerror("Ataque Detectado", f"Evasión por anidamiento excesivo.\nProfundidad actual: {profundidad}")
+                self.btn_step.config(state="disabled")
+ 
+        elif action == "CLOSE":
+            if self.stack.isEmpty():
+                self.log(f"\n🚨 ALERTA: Intento de cerrar '{proto}' con la pila vacía (isEmpty() = True).")
+                self.log("Diagnóstico: paquete corrupto o manipulado (crafting malicioso).")
+                messagebox.showerror("Ataque Detectado", "Incoherencia sintáctica (pila vacía).")
+                self.btn_step.config(state="disabled")
+                return
+ 
+            # El propio pop() ya nos da la capa que estaba en el tope,
+            # así que la comparamos directamente contra la que llegó.
+            top = self.stack.pop()
+            self.log(f"[POP]  <- Cerrando capa: {top} | Restantes: {len(self.stack.to_list())}")
+            self.update_stack_ui()
+ 
+            if top != proto:
+                self.log(f"\n🚨 ALERTA: Incoherencia LIFO.")
+                self.log(f"Se esperaba cerrar '{top}' (tope de la pila), pero llegó '{proto}'.")
+                self.log("Diagnóstico: header falsificado (protocol confusion).")
+                self.log("Nota clave: un simple CONTADOR de profundidad NO detectaría esto,")
+                self.log("porque el número de aperturas y cierres es igual. Solo la pila,")
+                self.log("al recordar la IDENTIDAD de cada capa, nota el desorden.")
+                messagebox.showerror(
+                    "Ataque Detectado",
+                    f"Incoherencia de desapilado (LIFO):\nEsperado '{top}', recibido '{proto}'."
+                )
+                self.btn_step.config(state="disabled")
 
 
     
