@@ -25,7 +25,7 @@ class DPIStackInspector():
 class DPIAppSimulator():
     def __init__(self, root):
         self.root = root
-        self.root.title = ("Simulador DPI usando la estructura Stack")
+        self.root.title("Simulador DPI usando la estructura Stack")
         self.root.geometry("820x560")
         self.root.resizable(False, False)
 
